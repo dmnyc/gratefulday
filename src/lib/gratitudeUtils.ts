@@ -30,6 +30,18 @@ export function getTotalDaysInYear(year: number): number {
 }
 
 /**
+ * Get the week of the year (ISO 8601 standard - week starts on Monday)
+ * Returns week number (1-53)
+ */
+export function getWeekOfYear(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7; // Convert Sunday (0) to 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // Set to Thursday of current week
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+/**
  * Check if a year is a leap year
  */
 export function isLeapYear(year: number): boolean {
@@ -229,4 +241,84 @@ export function getPromptForDay(dayOfYear: number): string {
 
   // Use modulo to cycle through prompts
   return prompts[(dayOfYear - 1) % prompts.length];
+}
+
+/**
+ * Get a daily affirmation based on day of year
+ */
+export function getAffirmationForDay(dayOfYear: number): string {
+  const affirmations = [
+    "I am worthy of love and happiness.",
+    "I choose to see the beauty in each moment.",
+    "I am grateful for the opportunities that come my way.",
+    "I trust in my ability to overcome challenges.",
+    "I am surrounded by abundance and joy.",
+    "I radiate positivity and kindness.",
+    "I am capable of creating positive change.",
+    "I embrace each day with an open heart.",
+    "I am strong, resilient, and full of potential.",
+    "I attract wonderful experiences into my life.",
+    "I am at peace with who I am becoming.",
+    "I celebrate my progress, no matter how small.",
+    "I am deserving of all good things.",
+    "I choose gratitude over worry.",
+    "I am connected to something greater than myself.",
+    "I trust the journey and enjoy the process.",
+    "I am enough, just as I am.",
+    "I welcome growth and transformation.",
+    "I am a source of light and inspiration.",
+    "I honor my feelings and respect my boundaries.",
+    "I am creating the life I want to live.",
+    "I find joy in simple pleasures.",
+    "I am patient with myself and others.",
+    "I am open to receiving love and support.",
+    "I believe in my dreams and take action.",
+    "I am grateful for my unique gifts and talents.",
+    "I choose to focus on what matters most.",
+    "I am resilient and can handle whatever comes.",
+    "I am surrounded by people who care about me.",
+    "I am creating positive energy around me.",
+    "I trust that everything is working out for my highest good.",
+    "I am worthy of rest and self-care.",
+    "I celebrate my achievements, big and small.",
+    "I am learning and growing every single day.",
+    "I am grateful for my body and all it does for me.",
+    "I choose to see the good in others.",
+    "I am creating meaningful connections.",
+    "I am aligned with my purpose and values.",
+    "I am grateful for the lessons life teaches me.",
+    "I am confident in my ability to make good decisions.",
+    "I am surrounded by beauty and wonder.",
+    "I am creating space for what truly matters.",
+    "I am grateful for the present moment.",
+    "I am kind to myself and others.",
+    "I am open to new possibilities and experiences.",
+    "I am worthy of success and fulfillment.",
+    "I choose to respond with love and compassion.",
+    "I am grateful for the support I receive.",
+    "I am creating a life filled with purpose and meaning.",
+    "I trust in my inner wisdom and intuition.",
+    "I am grateful for the gift of another day.",
+    "I am becoming the best version of myself.",
+    "I am worthy of all the good things life has to offer.",
+    "I choose to focus on solutions, not problems.",
+    "I am grateful for my ability to learn and adapt.",
+    "I am creating positive change in my life.",
+    "I am surrounded by love and support.",
+    "I am grateful for the journey, not just the destination.",
+    "I am enough, and I have enough.",
+    "I choose to see challenges as opportunities.",
+    "I am grateful for my strength and resilience.",
+    "I am creating a life I love living.",
+    "I trust that I am exactly where I need to be.",
+    "I am grateful for the people who enrich my life.",
+    "I am open to receiving abundance in all forms.",
+    "I am creating harmony and balance in my life.",
+    "I am grateful for my ability to make a difference.",
+    "I choose to live with intention and purpose.",
+    "I am worthy of peace, joy, and fulfillment.",
+  ];
+
+  // Use modulo to cycle through affirmations
+  return affirmations[(dayOfYear - 1) % affirmations.length];
 }

@@ -95,3 +95,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Animation for today's card on page load */
+  @keyframes pulse-once {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.15);
+    }
+  }
+
+  .animate-pulse-once {
+    animation: pulse-once 2s ease-in-out;
+  }
+}

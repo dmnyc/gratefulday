@@ -66,7 +66,7 @@ export function CommunityFeed() {
           <div>
             <h2 className="text-xl font-semibold">Community Reflections</h2>
             <p className="text-sm text-muted-foreground">
-              Gratitude shared by the Nostr community
+              Reflections shared by the gratefulday.space community
             </p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function CommunityFeed() {
               <div className="space-y-2">
                 <p className="font-medium">No reflections yet</p>
                 <p className="text-sm text-muted-foreground">
-                  Be the first to share your gratitude with the community!
+                  Be the first to share your reflection with the gratefulday.space community!
                 </p>
               </div>
             </div>

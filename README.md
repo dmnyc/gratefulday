@@ -77,7 +77,7 @@ Users can manage their relay connections through the settings.
 - Node.js 18+ and npm
 - A Nostr account (or create one within the app)
 
-### Installation
+### Quick Start
 
 ```bash
 # Install dependencies
@@ -89,6 +89,12 @@ npm run dev
 # Build for production
 npm run build
 ```
+
+The development server will start on **http://localhost:8080**.
+
+### Detailed Setup Guide
+
+For comprehensive local development setup instructions, troubleshooting, and development workflow, see [**docs/LOCAL_SETUP.md**](./docs/LOCAL_SETUP.md).
 
 ### Usage
 

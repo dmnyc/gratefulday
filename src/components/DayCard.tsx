@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Lock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DayInfo } from '@/lib/gratitudeUtils';
-import { getQuoteForDay, getPromptForDay } from '@/lib/gratitudeUtils';
+import { getQuoteForDay, getAffirmationForDay } from '@/lib/gratitudeUtils';
 import { DayDetailDialog } from './DayDetailDialog';
 
 interface DayCardProps {
@@ -25,12 +25,15 @@ export function DayCard({ day, hasEntry, onOpenDetail }: DayCardProps) {
   return (
     <Card
       className={cn(
-        'flex-shrink-0 w-[280px] h-[360px] cursor-pointer transition-all duration-300 relative overflow-hidden group',
+        'w-full h-[360px] cursor-pointer transition-all duration-300 relative overflow-hidden group',
         'animate-in fade-in-50 slide-in-from-bottom-4',
-        day.isToday && 'ring-2 ring-primary shadow-xl scale-105',
+        day.isToday && [
+          'ring-4 ring-amber-500 dark:ring-amber-400 shadow-2xl',
+          'animate-pulse-once', // Custom animation for page load
+        ],
         day.isFuture && 'opacity-50 cursor-not-allowed',
-        !day.isFuture && 'hover:shadow-2xl hover:scale-105 active:scale-100',
-        isHovered && !day.isFuture && 'shadow-2xl'
+        !day.isFuture && !day.isToday && 'hover:shadow-2xl hover:scale-[1.02] active:scale-100',
+        isHovered && !day.isFuture && !day.isToday && 'shadow-2xl'
       )}
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
@@ -40,13 +43,23 @@ export function DayCard({ day, hasEntry, onOpenDetail }: DayCardProps) {
       <div
         className={cn(
           'absolute inset-0 opacity-0 transition-opacity duration-300',
-          isHovered && !day.isFuture && 'opacity-10',
-          day.isToday && 'opacity-20'
+          isHovered && !day.isFuture && !day.isToday && 'opacity-10',
+          day.isToday && 'opacity-30'
         )}
         style={{
           background: 'linear-gradient(135deg, rgb(251, 191, 36) 0%, rgb(251, 146, 60) 50%, rgb(251, 113, 133) 100%)',
         }}
       />
+      
+      {/* Glow effect for today */}
+      {day.isToday && (
+        <div 
+          className="absolute inset-0 opacity-40 blur-xl pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, transparent 70%)',
+          }}
+        />
+      )}
 
       <CardContent className="p-6 h-full flex flex-col justify-between relative z-10">
         {/* Top section - Day number and status */}
@@ -68,8 +81,8 @@ export function DayCard({ day, hasEntry, onOpenDetail }: DayCardProps) {
                 </div>
               )}
               {day.isToday && (
-                <div className="p-2 rounded-full bg-primary/20 animate-pulse">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                <div className="p-2 rounded-full bg-amber-500/30 dark:bg-amber-400/30 animate-pulse shadow-lg">
+                  <Sparkles className="h-6 w-6 text-amber-600 dark:text-amber-400 drop-shadow-sm" />
                 </div>
               )}
             </div>
@@ -91,10 +104,10 @@ export function DayCard({ day, hasEntry, onOpenDetail }: DayCardProps) {
           <div className="space-y-3 flex-grow flex flex-col justify-center">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                Today's Reflection
+                Daily Affirmation
               </p>
-              <p className="text-sm text-foreground/80 line-clamp-2 italic">
-                "{getPromptForDay(day.dayOfYear)}"
+              <p className="text-sm text-foreground/80 line-clamp-3 italic">
+                "{getAffirmationForDay(day.dayOfYear)}"
               </p>
             </div>
           </div>
@@ -111,7 +124,7 @@ export function DayCard({ day, hasEntry, onOpenDetail }: DayCardProps) {
         {/* Bottom section - Status badge */}
         <div className="flex items-center justify-between pt-4 border-t border-border">
           {day.isToday && (
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
               Today
             </span>
           )}
