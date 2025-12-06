@@ -3,6 +3,7 @@ import { TodayHero } from './TodayHero';
 import { PastDaysList } from './PastDaysList';
 import { DayDetailDialog } from './DayDetailDialog';
 import type { DayInfo } from '@/lib/gratitudeUtils';
+import { getTotalDaysInYear } from '@/lib/gratitudeUtils';
 
 interface CalendarViewProps {
   days: DayInfo[];
@@ -15,6 +16,7 @@ export function CalendarView({ days, entriesByDate }: CalendarViewProps) {
 
   // Find today
   const today = days.find((day) => day.isToday);
+  const totalDays = today ? getTotalDaysInYear(today.date.getFullYear()) : 365;
 
   // Scroll to top on mount
   useEffect(() => {
@@ -45,6 +47,7 @@ export function CalendarView({ days, entriesByDate }: CalendarViewProps) {
           day={today}
           hasEntry={entriesByDate.get(today.dateString) || false}
           onOpenDetail={handleOpenDetail}
+          totalDays={totalDays}
         />
 
         {/* Past Days - Quiet, accessible, but visually subdued */}

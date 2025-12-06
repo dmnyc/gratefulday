@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Sparkles, Heart } from 'lucide-react';
+import { Check, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DayInfo } from '@/lib/gratitudeUtils';
-import { getQuoteForDay, getAffirmationForDay } from '@/lib/gratitudeUtils';
+import { getQuoteForDay, getAffirmationForDay, getWeekOfYear } from '@/lib/gratitudeUtils';
 
 interface TodayHeroProps {
   day: DayInfo;
   hasEntry: boolean;
   onOpenDetail: (day: DayInfo) => void;
+  totalDays: number;
 }
 
-export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
+export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
@@ -40,6 +41,10 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
 
   const quote = getQuoteForDay(day.dayOfYear);
   const affirmation = getAffirmationForDay(day.dayOfYear);
+  const weekOfYear = getWeekOfYear(day.date);
+  
+  // Calculate progress for text display
+  const progress = (day.dayOfYear / totalDays) * 100;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,48 +69,78 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
         />
 
         <CardContent className="p-8 sm:p-12 lg:p-16 relative z-10">
-          {/* Header - Increased vertical spacing */}
-          <div className="text-center mb-12 sm:mb-16 space-y-4 pt-4">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 rounded-full bg-amber-500/20 dark:bg-amber-400/20 animate-pulse">
-                <Sparkles className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Today
-                </p>
-                <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                  Day {day.dayOfYear}
-                </p>
-              </div>
-              {hasEntry && (
-                <div className="p-3 rounded-full bg-green-500/20 dark:bg-green-400/20">
-                  <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-              )}
-            </div>
+          {/* Hero Section - Left-aligned with increased top spacing */}
+          <div className="mb-12 sm:mb-16 space-y-3 pt-16 sm:pt-20">
+            {/* TODAY label */}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              TODAY
+            </p>
 
-            <div className="space-y-1">
-              <p className="text-lg sm:text-xl font-semibold text-foreground">
-                {day.date.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
+            {/* Day Number - Main Hero (reduced visual dominance) */}
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-foreground">
+              Day {day.dayOfYear}
+            </h1>
+
+            {/* Full Date */}
+            <p className="text-lg sm:text-xl font-semibold text-foreground">
+              {day.date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </p>
+
+            {/* "A year shaped by gratitude" with minimal progress ring */}
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                A year shaped by gratitude
               </p>
+              {/* Minimal progress ring - symbolic accent */}
+              <div className="relative flex-shrink-0">
+                <svg
+                  className="transform -rotate-90"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                >
+                  {/* Background circle */}
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="text-amber-200/30 dark:text-amber-900/30"
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    className="text-amber-600 dark:text-amber-400 transition-all duration-1000 ease-out"
+                    strokeDasharray={2 * Math.PI * 8}
+                    strokeDashoffset={2 * Math.PI * 8 - (progress / 100) * 2 * Math.PI * 8}
+                  />
+                </svg>
+              </div>
             </div>
           </div>
 
-          {/* Today's Practice Section */}
+          {/* Today's Reflection Section */}
           <div className="mb-10 sm:mb-12">
             {/* Section Header */}
-            <div className="mb-6 text-center">
+            <div className="mb-6">
               <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">
-                Today's Practice
+                Today's Reflection
               </h2>
               <p className="text-sm text-muted-foreground">
-                Reflect on wisdom and affirm your path
+                A moment to pause and appreciate your life.
               </p>
             </div>
 
@@ -113,13 +148,13 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
               {/* Quote Section - Consistent padding and spacing */}
               <div className="p-6 sm:p-7 rounded-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
                 <div className="space-y-3">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wider text-center">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wider">
                     Daily Wisdom
                   </p>
-                  <p className="text-lg sm:text-xl italic text-center text-foreground leading-relaxed">
+                  <p className="text-lg sm:text-xl italic text-foreground leading-relaxed">
                     "{quote.text}"
                   </p>
-                  <p className="text-sm text-center text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     — {quote.author}
                   </p>
                 </div>
@@ -128,10 +163,10 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
               {/* Affirmation Section - Enhanced prominence */}
               <div className="p-6 sm:p-7 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 backdrop-blur-sm border-2 border-rose-300/60 dark:border-rose-700/60 shadow-md">
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-rose-700 dark:text-rose-300 uppercase tracking-wider text-center">
+                  <p className="text-xs font-medium text-rose-700 dark:text-rose-300 uppercase tracking-wider">
                     Daily Affirmation
                   </p>
-                  <p className="text-base sm:text-lg italic text-center text-foreground leading-relaxed font-medium">
+                  <p className="text-base sm:text-lg italic text-foreground leading-relaxed font-medium">
                     "{affirmation}"
                   </p>
                 </div>
@@ -139,8 +174,12 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
             </div>
           </div>
 
-          {/* Primary CTA Button - Increased breathing room */}
-          <div className="relative mb-8 sm:mb-10 mt-8 sm:mt-10">
+          {/* CTA Prompt and Button */}
+          <div className="relative mb-8 sm:mb-10 mt-8 sm:mt-10 space-y-4">
+            {/* Prompt Text */}
+            <p className="text-center text-base font-medium text-foreground">
+              Notice something you're grateful for today.
+            </p>
             {/* Confetti Animation */}
             {showConfetti && (
               <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
@@ -202,12 +241,6 @@ export function TodayHero({ day, hasEntry, onOpenDetail }: TodayHeroProps) {
             </Button>
           </div>
 
-          {/* Secondary call to action */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              {hasEntry ? 'Tap card to view or edit your reflection' : 'Or tap the card above to explore'}
-            </p>
-          </div>
         </CardContent>
       </Card>
 

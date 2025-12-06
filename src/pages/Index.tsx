@@ -5,16 +5,15 @@ import { CommunityFeed } from '@/components/CommunityFeed';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HeaderProgressRing } from '@/components/HeaderProgressRing';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGratitudeEntries } from '@/hooks/useGratitudeEntries';
 import {
   getAllDaysInYear,
   getDayOfYear,
   getTotalDaysInYear,
-  getWeekOfYear,
 } from '@/lib/gratitudeUtils';
-import { Sparkles, Calendar, Users } from 'lucide-react';
+import { Calendar, Users } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +39,6 @@ export default function Index() {
   const currentYear = today.getFullYear();
   const currentDayOfYear = getDayOfYear(today);
   const totalDays = getTotalDaysInYear(currentYear);
-  const weekOfYear = getWeekOfYear(today);
 
   // Handle header shadow on scroll
   useEffect(() => {
@@ -78,42 +76,40 @@ export default function Index() {
             headerScrolled && 'shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
           )}
         >
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-[72px]">
-              {/* Left: Logo + Progress Ring */}
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg flex-shrink-0">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-              <HeaderProgressRing
-                currentDay={currentDayOfYear}
-                totalDays={totalDays}
-                date={today}
-                weekOfYear={weekOfYear}
-              />
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-[88px] sm:h-[96px] md:h-[104px]">
+              {/* Left: Brand Block - Logo (Dominant) */}
+              <div className="brand flex items-center py-6 sm:py-7 md:py-8">
+                <Logo 
+                  showText={false} 
+                  size="header" 
+                  className="flex-shrink-0"
+                />
               </div>
 
-              {/* Center/Right: Tabs (desktop) + Login */}
-              <div className="flex items-center gap-4">
+              {/* Right: Navigation + Login (Reduced Visual Weight) */}
+              <div className="flex items-center gap-3 sm:gap-4">
                 {!isMobile && (
                   <TabsList className="bg-transparent border-0 shadow-none h-auto p-0 gap-1">
                     <TabsTrigger
                       value="calendar"
-                      className="gap-2 data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                      className="gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
                     >
-                      <Calendar className="h-4 w-4" />
-                      My Calendar
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="hidden lg:inline">My Calendar</span>
+                      <span className="lg:hidden">Calendar</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="community"
-                      className="gap-2 data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                      className="gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
                     >
-                      <Users className="h-4 w-4" />
-                      Community
+                      <Users className="h-3.5 w-3.5" />
+                      <span className="hidden lg:inline">Community</span>
+                      <span className="lg:hidden">Community</span>
                     </TabsTrigger>
                   </TabsList>
                 )}
-                <LoginArea className="max-w-60" />
+                <LoginArea className="max-w-48 sm:max-w-60" />
               </div>
             </div>
           </div>
@@ -122,23 +118,25 @@ export default function Index() {
         {/* Mobile Tabs */}
         {isMobile && (
           <div className="border-b border-amber-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-            <div className="container mx-auto px-4">
-              <TabsList className="w-full bg-transparent border-0 shadow-none h-auto p-0 gap-1 justify-start">
-                <TabsTrigger
-                  value="calendar"
-                  className="flex-1 gap-2 data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
-                >
-                  <Calendar className="h-4 w-4" />
-                  My Calendar
-                </TabsTrigger>
-                <TabsTrigger
-                  value="community"
-                  className="flex-1 gap-2 data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
-                >
-                  <Users className="h-4 w-4" />
-                  Community
-                </TabsTrigger>
-              </TabsList>
+            <div className="container mx-auto px-4 sm:px-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full bg-transparent border-0 shadow-none h-auto p-0 gap-1 justify-start">
+                  <TabsTrigger
+                    value="calendar"
+                    className="flex-1 gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Calendar
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="community"
+                    className="flex-1 gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                  >
+                    <Users className="h-4 w-4" />
+                    Community
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </div>
         )}
@@ -172,20 +170,9 @@ export default function Index() {
         {/* Footer */}
         <footer className="border-t border-amber-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-8">
-            <div className="text-center space-y-3">
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Built with love on Nostr
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Vibed with{' '}
-                <a
-                  href="https://shakespeare.diy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
-                >
-                  Shakespeare
-                </a>
+                Made with gratitude. Powered by Nostr 💜
               </p>
             </div>
           </div>

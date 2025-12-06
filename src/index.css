@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .brand {
+    padding-left: 0;
+    padding-right: 1.5rem; /* 24px */
+  }
+  
+  @media (min-width: 640px) {
+    .brand {
+      padding-right: 2rem; /* 32px */
+    }
+  }
+}
+
 @layer base {
   :root {
     /* Warm, calming color palette with amber, orange, and rose tones */

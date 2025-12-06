@@ -166,14 +166,14 @@ ${gratitudeText.trim()}
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Day {day.dayOfYear} of 365
+              Capture Your Gratitude
             </DialogTitle>
             <DialogDescription className="text-base">
-              {formatDisplayDate(day.date)}
+              Day {day.dayOfYear} of 365 · {formatDisplayDate(day.date)}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-8 sm:space-y-10 py-4">
             {/* Quote Section */}
             <div className="p-6 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800">
               <div className="flex items-start gap-3">
@@ -233,20 +233,25 @@ ${gratitudeText.trim()}
             ) : (
               /* Today - Editable */
               <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground block">
-                  Your Reflection
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-foreground block">
+                    Write a moment of gratitude from today.
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    It can be a person, a moment, or something simple.
+                  </p>
                   {!user && (
-                    <span className="text-xs text-muted-foreground ml-2">
-                      (Login to save)
-                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Login to save your reflection
+                    </p>
                   )}
-                </label>
+                </div>
                 <Textarea
-                  placeholder="What are you grateful for today? Write your thoughts here..."
+                  placeholder="Share what you're grateful for..."
                   value={gratitudeText}
                   onChange={(e) => setGratitudeText(e.target.value)}
                   rows={6}
-                  className="resize-none text-base"
+                  className="resize-none text-base border-[#EEDCC5] focus-visible:border-[#EEDCC5] focus-visible:ring-2 focus-visible:ring-amber-200/50 dark:focus-visible:ring-amber-800/50 focus-visible:ring-offset-2"
                 />
                 <p className="text-xs text-muted-foreground">
                   {gratitudeText.length} characters
@@ -268,38 +273,36 @@ ${gratitudeText.trim()}
             ) : (
               /* Today - Full Action Buttons */
               <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="flex-1 sm:flex-initial"
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={isPending || !gratitudeText.trim()}
-                    className="min-w-[100px]"
-                  >
-                    {isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="flex-1 sm:flex-initial order-2 sm:order-1"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isPending || !gratitudeText.trim()}
+                  className="min-w-[100px] order-1 sm:order-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </>
+                  )}
+                </Button>
                 {canShare && (
                   <Button
                     onClick={handleShareToNostr}
                     disabled={isPublishingNote}
                     variant="default"
-                    className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+                    className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 order-3"
                   >
                     {isPublishingNote ? (
                       <>
