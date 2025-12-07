@@ -20,15 +20,14 @@ export function useGratitudeGift() {
   const { nostr } = useNostr();
 
   /**
-   * Select a random active Nostr pubkey
-   * Queries for random active users from recent events
+   * Select a random active Nostr pubkey with lightning address
+   * Queries for random active users from recent events and verifies they have lightning addresses
    */
   const selectRandomRecipient = async (): Promise<string | null> => {
-    // Select random recipient from active users
+    // Select random recipient from active users with lightning addresses
     try {
-      // TODO: Query for recently active users or maintain a pool of active pubkeys
-      // For now, we'll query for recent kind 1 events and select a random author
-      const signal = AbortSignal.timeout(3000);
+      // Query for recent kind 1 events and select a random author
+      const signal = AbortSignal.timeout(5000); // Increased timeout for profile checks
       const recentEvents = await nostr.query(
         [{ kinds: [1], limit: 50 }],
         { signal }
@@ -47,9 +46,49 @@ export function useGratitudeGift() {
         return null;
       }
 
-      // Select random pubkey
-      const randomIndex = Math.floor(Math.random() * pubkeys.length);
-      return pubkeys[randomIndex];
+      // Check each pubkey for lightning address
+      const pubkeysWithLightning: string[] = [];
+      
+      // Batch fetch profiles (query all at once for efficiency)
+      const profileSignal = AbortSignal.timeout(5000);
+      const profileEvents = await nostr.query(
+        [{ kinds: [0], authors: pubkeys, limit: pubkeys.length }],
+        { signal: profileSignal }
+      );
+
+      // Create a map of pubkey -> profile event
+      const profileMap = new Map<string, typeof profileEvents[0]>();
+      profileEvents.forEach((event) => {
+        profileMap.set(event.pubkey, event);
+      });
+
+      // Check each pubkey for lightning address
+      for (const pubkey of pubkeys) {
+        const profileEvent = profileMap.get(pubkey);
+        if (!profileEvent) {
+          continue; // Skip if no profile found
+        }
+
+        try {
+          const profileData = JSON.parse(profileEvent.content);
+          const lightningAddress = profileData.lud16 || profileData.lud06;
+          
+          if (lightningAddress) {
+            pubkeysWithLightning.push(pubkey);
+          }
+        } catch {
+          // Invalid profile JSON, skip
+          continue;
+        }
+      }
+
+      if (pubkeysWithLightning.length === 0) {
+        return null;
+      }
+
+      // Select random pubkey from those with lightning addresses
+      const randomIndex = Math.floor(Math.random() * pubkeysWithLightning.length);
+      return pubkeysWithLightning[randomIndex];
     } catch (error) {
       console.error('Error selecting random recipient:', error);
       return null;

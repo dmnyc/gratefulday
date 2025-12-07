@@ -114,20 +114,21 @@ export function DayDetailDialog({ day, open, onOpenChange }: DayDetailDialogProp
       return;
     }
 
-    // Format the content for the kind 1 note
-    const noteContent = `📅 Day ${day.dayOfYear} of 365 - ${formatDisplayDate(day.date)}
+    // Rotate through day emojis based on day number
+    const dayEmojis = ["☀️", "🌿", "🌅", "🌞", "🌻", "⭐️"];
+    const dayEmoji = dayEmojis[(day.dayOfYear - 1) % dayEmojis.length];
 
-✨ Daily Wisdom:
-"${quote.text}"
+    // Format the content for the kind 1 note
+    const noteContent = `Day ${day.dayOfYear} ${dayEmoji}
+
+✨ "${quote.text}"
 — ${quote.author}
 
-💫 Daily Affirmation:
-"${affirmation}"
+💫 "${affirmation}"
 
-🙏 My Reflection:
-${gratitudeText.trim()}
+🙏 ${gratitudeText.trim()}
 
-#gratefulday #gratefuldayspace`;
+https://gratefulday.space`;
 
     publishNote(
       {
