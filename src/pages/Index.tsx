@@ -143,7 +143,7 @@ export default function Index() {
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-[280px] sm:w-[320px]">
-                      <div className="flex flex-col gap-4 mt-8">
+                      <div className="flex flex-col gap-4 pt-24 sm:pt-28">
                         <Button
                           variant="ghost"
                           onClick={() => {
