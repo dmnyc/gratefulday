@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { GratitudeGiftModal } from '@/components/GratitudeGiftModal';
 import { LibraryComingSoonModal } from '@/components/LibraryComingSoonModal';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, X } from 'lucide-react';
 
 export default function Index() {
   useHead({
@@ -37,6 +39,7 @@ export default function Index() {
   const [headerScrolled, setHeaderScrolled] = useState(false);
   const [giftModalOpen, setGiftModalOpen] = useState(false);
   const [libraryModalOpen, setLibraryModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const today = new Date();
@@ -128,50 +131,72 @@ export default function Index() {
                   </div>
                 )}
                 {isMobile && (
-                  <div className="flex items-center gap-0.5 flex-wrap max-w-[200px]">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveTab('calendar')}
-                      className={cn(
-                        "text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md",
-                        activeTab === 'calendar' 
-                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
-                          : "hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                      )}
-                    >
-                      Calendar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveTab('community')}
-                      className={cn(
-                        "text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md",
-                        activeTab === 'community' 
-                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
-                          : "hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                      )}
-                    >
-                      Community
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setLibraryModalOpen(true)}
-                      className="text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                    >
-                      Library
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGiftModalOpen(true)}
-                      className="text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                    >
-                      Gift
-                    </Button>
-                  </div>
+                  <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        aria-label="Open menu"
+                      >
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                      <div className="flex flex-col gap-4 mt-8">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setActiveTab('calendar');
+                            setMobileMenuOpen(false);
+                          }}
+                          className={cn(
+                            "justify-start text-base h-12",
+                            activeTab === 'calendar' 
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
+                              : ""
+                          )}
+                        >
+                          Calendar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setActiveTab('community');
+                            setMobileMenuOpen(false);
+                          }}
+                          className={cn(
+                            "justify-start text-base h-12",
+                            activeTab === 'community' 
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
+                              : ""
+                          )}
+                        >
+                          Community
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setLibraryModalOpen(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="justify-start text-base h-12"
+                        >
+                          Library
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setGiftModalOpen(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="justify-start text-base h-12"
+                        >
+                          Gift
+                        </Button>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 )}
                 <LoginArea className="max-w-48 sm:max-w-60" />
               </div>

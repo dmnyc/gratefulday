@@ -112,19 +112,73 @@ export function useGratitudeGift() {
   };
 
   /**
+   * Check if an invoice has been paid by querying the zap endpoint
+   * Tries multiple methods to verify payment status
+   */
+  const checkInvoiceStatus = async (zapEndpoint: string, invoice: string): Promise<boolean> => {
+    try {
+      // Method 1: Try to check invoice status via the zap endpoint
+      // Some LNURL endpoints support checking invoice status
+      try {
+        const response = await fetch(`${zapEndpoint}/check/${encodeURIComponent(invoice)}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.paid === true || data.settled === true) {
+            return true;
+          }
+        }
+      } catch {
+        // Endpoint doesn't support status checking, try next method
+      }
+
+      // Method 2: Try checking via invoice lookup (some services support this)
+      try {
+        // Extract payment hash from invoice (basic BOLT11 parsing)
+        // This is a simplified check - full BOLT11 decoding would be more robust
+        const paymentHashMatch = invoice.match(/lnbc\d+[munp]?1[^1]*1([a-z0-9]{64})/i);
+        if (paymentHashMatch) {
+          const paymentHash = paymentHashMatch[1];
+          // Some services allow checking payment hash status
+          // This is service-dependent and may not work for all providers
+        }
+      } catch {
+        // Payment hash extraction failed, continue
+      }
+
+      // Method 3: For now, we'll rely on the fact that if the invoice callback
+      // was triggered (which happens when payment is made), the zap request
+      // would have been processed. Since we can't reliably check invoice status
+      // without service-specific APIs, we return false and let the polling continue
+      // The user can manually confirm payment, or we can add a manual "I paid" button
+      return false;
+    } catch (error) {
+      console.debug('Invoice status check error:', error);
+      return false;
+    }
+  };
+
+  /**
    * Send a gratitude gift (zap) to a random Nostr user
    * The zap will appear in the recipient's client notifications
    * @param amount - Amount in sats to send
    * @param message - Optional custom message (defaults to standard gratitude message)
+   * @returns Object with success status and invoice info if manual payment needed
    */
-  const sendGratitudeGift = async (amount: number, message?: string): Promise<boolean> => {
+  const sendGratitudeGift = async (
+    amount: number, 
+    message?: string
+  ): Promise<{ success: boolean; invoice?: string; zapEndpoint?: string; signedZapRequest?: any }> => {
     if (!user) {
       toast({
         title: 'Login required',
         description: 'You must be logged in to send a gratitude gift.',
         variant: 'destructive',
       });
-      return false;
+      return { success: false };
     }
 
     if (amount <= 0) {
@@ -133,7 +187,7 @@ export function useGratitudeGift() {
         description: 'Please select a valid amount.',
         variant: 'destructive',
       });
-      return false;
+      return { success: false };
     }
 
     setIsSending(true);
@@ -149,7 +203,7 @@ export function useGratitudeGift() {
           variant: 'destructive',
         });
         setIsSending(false);
-        return false;
+        return { success: false };
       }
 
       const { pubkey: recipientPubkey, profileEvent, profileData } = recipient;
@@ -164,7 +218,7 @@ export function useGratitudeGift() {
           variant: 'destructive',
         });
         setIsSending(false);
-        return false;
+        return { success: false };
       }
 
       // Create zap request with gratitude message
@@ -215,7 +269,7 @@ export function useGratitudeGift() {
       const handlePaymentSuccess = async () => {
         await publishZapRequest(signedZapRequest);
         setIsSending(false);
-        return true;
+        return { success: true };
       };
 
       // Try NWC first
@@ -231,20 +285,22 @@ export function useGratitudeGift() {
       // Try WebLN
       if (webln) {
         try {
-          const webLnProvider = webln.enable && typeof webln.enable === 'function'
-            ? await webln.enable() || webln
-            : webln;
+          let webLnProvider = webln;
+          if (webln.enable && typeof webln.enable === 'function') {
+            try {
+              await webln.enable();
+              // enable() may return a provider or void - use original if void
+              webLnProvider = webln;
+            } catch {
+              // Enable failed, use original provider
+              webLnProvider = webln;
+            }
+          }
           await webLnProvider.sendPayment(invoice);
           return await handlePaymentSuccess();
         } catch (weblnError) {
-          console.error('WebLN payment failed:', weblnError);
-          toast({
-            title: 'Payment failed',
-            description: 'Could not complete payment. Please try again.',
-            variant: 'destructive',
-          });
-          setIsSending(false);
-          return false;
+          console.error('WebLN payment failed, falling back to manual payment:', weblnError);
+          // Fall through to manual payment option
         }
       }
 
@@ -252,24 +308,25 @@ export function useGratitudeGift() {
       if (config.defaultWalletApp !== 'none') {
         const walletInfo = getWalletAppInfo(config.defaultWalletApp);
         if (walletInfo && openInvoiceInWalletApp(invoice, config.defaultWalletApp)) {
-          await publishZapRequest(signedZapRequest);
-          toast({
-            title: 'Opening in wallet app',
-            description: `Opening invoice in ${walletInfo.name}. Complete the payment there.`,
-          });
+          // User opened in wallet app - return invoice info for polling
           setIsSending(false);
-          return true;
+          return {
+            success: false,
+            invoice,
+            zapEndpoint,
+            signedZapRequest,
+          };
         }
       }
 
-      // No payment method available
-      toast({
-        title: 'No payment method',
-        description: 'Please connect a Lightning wallet or set a default wallet app in settings to send gratitude gifts.',
-        variant: 'destructive',
-      });
+      // No automatic payment method available - return invoice for manual payment
       setIsSending(false);
-      return false;
+      return {
+        success: false,
+        invoice,
+        zapEndpoint,
+        signedZapRequest,
+      };
     } catch (error) {
       console.error('Gratitude gift error:', error);
       toast({
@@ -278,12 +335,49 @@ export function useGratitudeGift() {
         variant: 'destructive',
       });
       setIsSending(false);
+      return { success: false };
+    }
+  };
+
+  /**
+   * Verify payment and publish zap request after manual payment
+   * @param forcePublish - If true, publish zap request even if payment can't be verified (user confirmed payment)
+   */
+  const verifyAndPublishPayment = async (
+    invoice: string,
+    zapEndpoint: string,
+    signedZapRequest: any,
+    forcePublish: boolean = false
+  ): Promise<boolean> => {
+    try {
+      // Check if invoice is paid
+      const isPaid = await checkInvoiceStatus(zapEndpoint, invoice);
+      
+      if (isPaid || forcePublish) {
+        await publishZapRequest(signedZapRequest);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      // If force publish, still try to publish
+      if (forcePublish) {
+        try {
+          await publishZapRequest(signedZapRequest);
+          return true;
+        } catch (publishError) {
+          console.error('Failed to publish zap request:', publishError);
+        }
+      }
       return false;
     }
   };
 
   return {
     sendGratitudeGift,
+    verifyAndPublishPayment,
+    checkInvoiceStatus,
     isSending,
   };
 }
