@@ -13,6 +13,10 @@ export default defineConfig(() => ({
   plugins: [
     react(),
   ],
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+    force: true, // Force re-optimization
+  },
   test: {
     globals: true,
     environment: 'jsdom',
@@ -28,5 +32,6 @@ export default defineConfig(() => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ['react', 'react-dom'], // Ensure single React instance
   },
 }));

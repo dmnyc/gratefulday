@@ -12,10 +12,12 @@ import {
   getDayOfYear,
   getTotalDaysInYear,
 } from '@/lib/gratitudeUtils';
-import { Calendar, Users } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { GratitudeGiftModal } from '@/components/GratitudeGiftModal';
+import { LibraryComingSoonModal } from '@/components/LibraryComingSoonModal';
+import { Button } from '@/components/ui/button';
 
 export default function Index() {
   useHead({
@@ -33,6 +35,8 @@ export default function Index() {
   const { data: gratitudeEntries, isLoading } = useGratitudeEntries(user?.pubkey);
   const [activeTab, setActiveTab] = useState('calendar');
   const [headerScrolled, setHeaderScrolled] = useState(false);
+  const [giftModalOpen, setGiftModalOpen] = useState(false);
+  const [libraryModalOpen, setLibraryModalOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const today = new Date();
@@ -87,27 +91,87 @@ export default function Index() {
                 />
               </div>
 
-              {/* Right: Navigation + Login (Reduced Visual Weight) */}
-              <div className="flex items-center gap-3 sm:gap-4">
+              {/* Right: Navigation + Login */}
+              <div className="flex items-center gap-2 sm:gap-3">
                 {!isMobile && (
-                  <TabsList className="bg-transparent border-0 shadow-none h-auto p-0 gap-1">
-                    <TabsTrigger
-                      value="calendar"
-                      className="gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                  <div className="flex items-center gap-1">
+                    <TabsList className="bg-transparent border-0 shadow-none h-auto p-0 gap-0">
+                      <TabsTrigger
+                        value="calendar"
+                        className="text-sm px-3 py-2 rounded-md data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                      >
+                        Calendar
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="community"
+                        className="text-sm px-3 py-2 rounded-md data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                      >
+                        Community
+                      </TabsTrigger>
+                    </TabsList>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLibraryModalOpen(true)}
+                      className="text-sm px-3 py-2 h-auto rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20 data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30"
                     >
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span className="hidden lg:inline">My Calendar</span>
-                      <span className="lg:hidden">Calendar</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="community"
-                      className="gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
+                      Library
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setGiftModalOpen(true)}
+                      className="text-sm px-3 py-2 h-auto rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20"
                     >
-                      <Users className="h-3.5 w-3.5" />
-                      <span className="hidden lg:inline">Community</span>
-                      <span className="lg:hidden">Community</span>
-                    </TabsTrigger>
-                  </TabsList>
+                      Gift
+                    </Button>
+                  </div>
+                )}
+                {isMobile && (
+                  <div className="flex items-center gap-0.5 flex-wrap max-w-[200px]">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveTab('calendar')}
+                      className={cn(
+                        "text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md",
+                        activeTab === 'calendar' 
+                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
+                          : "hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                      )}
+                    >
+                      Calendar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveTab('community')}
+                      className={cn(
+                        "text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md",
+                        activeTab === 'community' 
+                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
+                          : "hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                      )}
+                    >
+                      Community
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLibraryModalOpen(true)}
+                      className="text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                    >
+                      Library
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setGiftModalOpen(true)}
+                      className="text-xs px-2 py-2 h-[44px] min-h-[44px] rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                    >
+                      Gift
+                    </Button>
+                  </div>
                 )}
                 <LoginArea className="max-w-48 sm:max-w-60" />
               </div>
@@ -115,31 +179,6 @@ export default function Index() {
           </div>
         </header>
 
-        {/* Mobile Tabs */}
-        {isMobile && (
-          <div className="border-b border-amber-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-            <div className="container mx-auto px-4 sm:px-6">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full bg-transparent border-0 shadow-none h-auto p-0 gap-1 justify-start">
-                  <TabsTrigger
-                    value="calendar"
-                    className="flex-1 gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Calendar
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="community"
-                    className="flex-1 gap-2 text-sm data-[state=active]:bg-amber-100 dark:data-[state=active]:bg-amber-900/30 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300"
-                  >
-                    <Users className="h-4 w-4" />
-                    Community
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </div>
-        )}
 
         {/* Main Content Section */}
         <section className="w-full">
@@ -178,6 +217,18 @@ export default function Index() {
           </div>
         </footer>
       </div>
+
+      {/* Gratitude Gift Modal */}
+      <GratitudeGiftModal
+        open={giftModalOpen}
+        onOpenChange={setGiftModalOpen}
+      />
+
+      {/* Library Coming Soon Modal */}
+      <LibraryComingSoonModal
+        open={libraryModalOpen}
+        onOpenChange={setLibraryModalOpen}
+      />
     </Tabs>
   );
 }

@@ -9,11 +9,15 @@ export interface RelayMetadata {
   updatedAt: number;
 }
 
+export type WalletApp = 'alby' | 'breez' | 'zeus' | 'phoenix' | 'wallet-of-satoshi' | 'none';
+
 export interface AppConfig {
   /** Current theme */
   theme: Theme;
   /** NIP-65 relay list metadata */
   relayMetadata: RelayMetadata;
+  /** Default Lightning wallet app for opening invoices */
+  defaultWalletApp: WalletApp;
 }
 
 export interface AppContextType {

@@ -18,16 +18,17 @@ interface GratitudeGiftModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const SAT_AMOUNTS = [21, 100, 210, 500] as const;
+const SAT_AMOUNTS = [111, 210, 369, 500, 777, 1000, 2100] as const;
 const RANDOM_AMOUNT = 'random' as const;
 const CUSTOM_AMOUNT = 'custom' as const;
 
 type AmountOption = typeof SAT_AMOUNTS[number] | typeof RANDOM_AMOUNT | typeof CUSTOM_AMOUNT;
 
 const DEFAULT_MESSAGE = "A small gift of gratitude from someone who appreciates you today. 💜";
+const WEBSITE_URL = "https://gratefulday.space";
 
 export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalProps) {
-  const [selectedAmount, setSelectedAmount] = useState<AmountOption>(100);
+  const [selectedAmount, setSelectedAmount] = useState<AmountOption>(111);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [customMessage, setCustomMessage] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -37,8 +38,8 @@ export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalPro
     let amount: number;
     
     if (selectedAmount === RANDOM_AMOUNT) {
-      // Random amount between 21 and 500
-      const amounts = [21, 100, 210, 500];
+      // Random amount from available options
+      const amounts = [111, 210, 369, 500, 777, 1000, 2100];
       amount = amounts[Math.floor(Math.random() * amounts.length)];
     } else if (selectedAmount === CUSTOM_AMOUNT) {
       // Custom amount
@@ -52,7 +53,9 @@ export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalPro
     }
 
     // Use custom message if provided, otherwise use default
-    const message = customMessage.trim() || DEFAULT_MESSAGE;
+    // Always append website URL to the message
+    const baseMessage = customMessage.trim() || DEFAULT_MESSAGE;
+    const message = `${baseMessage} ${WEBSITE_URL}`;
 
     const success = await sendGratitudeGift(amount, message);
     if (success) {
@@ -62,7 +65,7 @@ export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalPro
 
   const handleClose = () => {
     setShowSuccess(false);
-    setSelectedAmount(100);
+    setSelectedAmount(111);
     setCustomAmount('');
     setCustomMessage('');
     onOpenChange(false);
@@ -94,7 +97,7 @@ export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalPro
                   Gratitude grows when it's shared.
                 </p>
                 <p>
-                  When you send a gratitude gift, a small amount of sats is anonymously sent to another person on Nostr. You don't choose who receives it, and they won't know it came from you.
+                  When you send a gratitude gift, a small amount of sats is sent to a randomly selected person on Nostr. We filter out bots and news accounts, so your gift goes to a real person. You don't choose who receives it—the recipient is randomly selected from active users.
                 </p>
                 <p>
                   It's a simple way to spread kindness without expecting anything in return.
@@ -169,7 +172,7 @@ export function GratitudeGiftModal({ open, onOpenChange }: GratitudeGiftModalPro
                   Message (optional)
                 </label>
                 <Textarea
-                  placeholder={DEFAULT_MESSAGE}
+                  placeholder={`${DEFAULT_MESSAGE} ${WEBSITE_URL}`}
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
                   rows={3}

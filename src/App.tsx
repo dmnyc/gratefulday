@@ -41,6 +41,7 @@ const defaultConfig: AppConfig = {
     ],
     updatedAt: 0,
   },
+  defaultWalletApp: 'none',
 };
 
 export function App() {

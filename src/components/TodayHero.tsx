@@ -1,17 +1,10 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Heart, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Check, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DayInfo } from '@/lib/gratitudeUtils';
 import { getQuoteForDay, getAffirmationForDay, getWeekOfYear } from '@/lib/gratitudeUtils';
-import { GratitudeGiftModal } from './GratitudeGiftModal';
 
 interface TodayHeroProps {
   day: DayInfo;
@@ -24,7 +17,6 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
   const [isHovered, setIsHovered] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
-  const [giftModalOpen, setGiftModalOpen] = useState(false);
 
   const handleCardClick = () => {
     onOpenDetail(day);
@@ -76,21 +68,21 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
           }}
         />
 
-        <CardContent className="p-8 sm:p-12 lg:p-16 relative z-10">
-          {/* Hero Section - Left-aligned with increased top spacing */}
-          <div className="mb-12 sm:mb-16 space-y-3 pt-16 sm:pt-20">
+        <CardContent className="p-6 sm:p-8 lg:p-10 relative z-10">
+          {/* Hero Section - Left-aligned with reduced top spacing */}
+          <div className="mb-6 sm:mb-8 space-y-2 pt-4 sm:pt-6">
             {/* TODAY label */}
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               TODAY
             </p>
 
             {/* Day Number - Main Hero (reduced visual dominance) */}
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-foreground">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-foreground">
               Day {day.dayOfYear}
             </h1>
 
             {/* Full Date */}
-            <p className="text-lg sm:text-xl font-semibold text-foreground">
+            <p className="text-base sm:text-lg font-semibold text-foreground">
               {day.date.toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
@@ -141,25 +133,25 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
           </div>
 
           {/* Today's Reflection Section */}
-          <div className="mb-10 sm:mb-12">
+          <div className="mb-6 sm:mb-8">
             {/* Section Header */}
-            <div className="mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">
+            <div className="mb-3">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground mb-0.5">
                 Today's Reflection
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 A moment to pause and appreciate your life.
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Quote Section - Consistent padding and spacing */}
-              <div className="p-6 sm:p-7 rounded-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
-                <div className="space-y-3">
+              <div className="p-4 sm:p-5 rounded-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
+                <div className="space-y-2">
                   <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wider">
                     Daily Wisdom
                   </p>
-                  <p className="text-lg sm:text-xl italic text-foreground leading-relaxed">
+                  <p className="text-base sm:text-lg italic text-foreground leading-relaxed">
                     "{quote.text}"
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -169,12 +161,12 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
               </div>
 
               {/* Affirmation Section - Enhanced prominence */}
-              <div className="p-6 sm:p-7 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 backdrop-blur-sm border-2 border-rose-300/60 dark:border-rose-700/60 shadow-md">
-                <div className="space-y-2">
+              <div className="p-4 sm:p-5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 backdrop-blur-sm border-2 border-rose-300/60 dark:border-rose-700/60 shadow-md">
+                <div className="space-y-1.5">
                   <p className="text-xs font-medium text-rose-700 dark:text-rose-300 uppercase tracking-wider">
                     Daily Affirmation
                   </p>
-                  <p className="text-base sm:text-lg italic text-foreground leading-relaxed font-medium">
+                  <p className="text-sm sm:text-base italic text-foreground leading-relaxed font-medium">
                     "{affirmation}"
                   </p>
                 </div>
@@ -183,9 +175,9 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
           </div>
 
           {/* CTA Prompt and Button */}
-          <div className="relative mb-8 sm:mb-10 mt-8 sm:mt-10 space-y-4">
+          <div className="relative mb-4 sm:mb-6 mt-6 sm:mt-8 space-y-3">
             {/* Prompt Text */}
-            <p className="text-center text-base font-medium text-foreground">
+            <p className="text-center text-sm sm:text-base font-medium text-foreground">
               Notice something you're grateful for today.
             </p>
             {/* Confetti Animation */}
@@ -225,7 +217,10 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
             )}
 
             <Button
-              onClick={handleButtonClick}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleButtonClick(e);
+              }}
               size="lg"
               className={cn(
                 'w-full h-14 sm:h-16 text-base sm:text-lg font-semibold',
@@ -249,48 +244,8 @@ export function TodayHero({ day, hasEntry, onOpenDetail, totalDays }: TodayHeroP
             </Button>
           </div>
 
-          {/* Gratitude Gift Section */}
-          <div className="mt-8 sm:mt-10 space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setGiftModalOpen(true)}
-                className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-300 dark:border-amber-700 hover:bg-gradient-to-r hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/30 dark:hover:to-orange-900/30 text-amber-900 dark:text-amber-100"
-              >
-                Send a Gratitude Gift
-              </Button>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Learn more about gratitude gifts"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-sm">
-                      Send a small, anonymous gift of sats to a random person on Nostr. It's a quiet act of gratitude with no score, no identity, and no expectation.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <p className="text-xs text-center text-muted-foreground">
-              Quietly send a small gift of sats to someone on Nostr.
-            </p>
-          </div>
         </CardContent>
       </Card>
-
-      {/* Gratitude Gift Modal */}
-      <GratitudeGiftModal
-        open={giftModalOpen}
-        onOpenChange={setGiftModalOpen}
-      />
 
       {/* Confetti and Checkmark Animation Styles */}
       <style>{`

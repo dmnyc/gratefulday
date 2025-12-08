@@ -31,20 +31,18 @@ export function DayDetailDialog({ day, open, onOpenChange }: DayDetailDialogProp
   const { mutate: publishNote, isPending: isPublishingNote } = useNostrPublish();
   const { toast } = useToast();
 
-  // Fetch existing entry for this day
-  const { data: existingEntry, refetch } = useGratitudeEntry(
+  // Fetch existing entry for this day (only for display in past days, not for editing)
+  const { data: existingEntry } = useGratitudeEntry(
     user?.pubkey,
     day?.dateString || ''
   );
 
-  // Update local state when existing entry loads
+  // Always start with a fresh empty text box when dialog opens or day changes
   useEffect(() => {
-    if (existingEntry) {
-      setGratitudeText(existingEntry.content);
-    } else {
+    if (open) {
       setGratitudeText('');
     }
-  }, [existingEntry, day]);
+  }, [day, open]);
 
   if (!day) return null;
 
@@ -84,9 +82,9 @@ export function DayDetailDialog({ day, open, onOpenChange }: DayDetailDialogProp
         onSuccess: () => {
           toast({
             title: 'Reflection saved! ✨',
-            description: 'Your reflection has been recorded.',
+            description: 'Your reflection has been saved.',
           });
-          refetch();
+          setGratitudeText(''); // Reset text box for a fresh entry
         },
         onError: (error) => {
           toast({
@@ -108,49 +106,79 @@ export function DayDetailDialog({ day, open, onOpenChange }: DayDetailDialogProp
     if (!gratitudeText.trim()) {
       toast({
         title: 'No reflection to share',
-        description: 'Please save your reflection first before sharing.',
+        description: 'Please write something before sharing.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Rotate through day emojis based on day number
-    const dayEmojis = ["☀️", "🌿", "🌅", "🌞", "🌻", "⭐️"];
-    const dayEmoji = dayEmojis[(day.dayOfYear - 1) % dayEmojis.length];
+    const timestamp = Math.floor(day.date.getTime() / 1000);
+    const trimmedText = gratitudeText.trim();
 
-    // Format the content for the kind 1 note
-    const noteContent = `Day ${day.dayOfYear} ${dayEmoji}
+    // First, save as kind 36669
+    createEvent(
+      {
+        kind: 36669,
+        content: trimmedText,
+        tags: [
+          ['d', day.dateString],
+          ['published_at', String(timestamp)],
+          ['day', String(day.dayOfYear)],
+          ['alt', `Daily reflection entry for ${formatDisplayDate(day.date)} (Day ${day.dayOfYear})`],
+        ],
+      },
+      {
+        onSuccess: () => {
+          // After saving kind 36669, post as kind 1 note
+          // Rotate through day emojis based on day number
+          const dayEmojis = ["☀️", "🌿", "🌅", "🌞", "🌻", "⭐️"];
+          const dayEmoji = dayEmojis[(day.dayOfYear - 1) % dayEmojis.length];
+
+          // Format the content for the kind 1 note
+          const noteContent = `Day ${day.dayOfYear} ${dayEmoji}
 
 ✨ "${quote.text}"
 — ${quote.author}
 
 💫 "${affirmation}"
 
-🙏 ${gratitudeText.trim()}
+🙏 ${trimmedText}
 
 https://gratefulday.space`;
 
-    publishNote(
-      {
-        kind: 1,
-        content: noteContent,
-        tags: [
-          ['t', 'gratefulday'],
-          ['t', 'gratefuldayspace'],
-          ['d', day.dateString],
-          ['day', String(day.dayOfYear)],
-        ],
-      },
-      {
-        onSuccess: () => {
-          toast({
-            title: 'Shared to Nostr! 🌟',
-            description: 'Your reflection has been posted to gratefulday.space.',
-          });
+          publishNote(
+            {
+              kind: 1,
+              content: noteContent,
+              tags: [
+                ['t', 'gratefulday'],
+                ['t', 'gratefuldayspace'],
+                ['d', day.dateString],
+                ['day', String(day.dayOfYear)],
+              ],
+            },
+            {
+              onSuccess: () => {
+                toast({
+                  title: 'Shared to Nostr! 🌟',
+                  description: 'Your reflection has been saved and posted to gratefulday.space.',
+                });
+                setGratitudeText(''); // Reset text box for a fresh entry
+              },
+              onError: (error) => {
+                toast({
+                  title: 'Saved but failed to share',
+                  description: error.message || 'Your reflection was saved but could not be posted.',
+                  variant: 'destructive',
+                });
+                setGratitudeText(''); // Reset text box even if share failed
+              },
+            }
+          );
         },
         onError: (error) => {
           toast({
-            title: 'Failed to share',
+            title: 'Failed to save',
             description: error.message || 'Please try again.',
             variant: 'destructive',
           });
@@ -164,7 +192,7 @@ https://gratefulday.space`;
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
               Capture Your Gratitude
@@ -216,7 +244,7 @@ https://gratefulday.space`;
                       {existingEntry ? (
                         <div className="space-y-2">
                           <p className="text-base text-foreground whitespace-pre-wrap break-words">
-                            {gratitudeText}
+                            {existingEntry.content}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Last updated: {new Date(existingEntry.created_at * 1000).toLocaleString()}
@@ -283,7 +311,7 @@ https://gratefulday.space`;
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isPending || !gratitudeText.trim()}
+                  disabled={isPending || isPublishingNote || !gratitudeText.trim()}
                   className="min-w-[100px] order-1 sm:order-2"
                 >
                   {isPending ? (
@@ -298,26 +326,24 @@ https://gratefulday.space`;
                     </>
                   )}
                 </Button>
-                {canShare && (
-                  <Button
-                    onClick={handleShareToNostr}
-                    disabled={isPublishingNote}
-                    variant="default"
-                    className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 order-3"
-                  >
-                    {isPublishingNote ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sharing...
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share to Nostr
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  onClick={handleShareToNostr}
+                  disabled={isPending || isPublishingNote || !gratitudeText.trim()}
+                  variant="default"
+                  className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 order-3"
+                >
+                  {isPending || isPublishingNote ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {isPending ? 'Saving...' : 'Sharing...'}
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share to Nostr
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </div>

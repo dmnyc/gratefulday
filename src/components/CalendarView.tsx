@@ -41,7 +41,7 @@ export function CalendarView({ days, entriesByDate }: CalendarViewProps) {
 
   return (
     <>
-      <div className="min-h-screen py-8 sm:py-12 lg:py-16">
+      <div className="min-h-screen py-4 sm:py-6 lg:py-8">
         {/* Today Hero - Large, centered, prominent */}
         <TodayHero
           day={today}

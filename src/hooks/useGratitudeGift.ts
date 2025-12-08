@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/useToast';
 import { useAppContext } from '@/hooks/useAppContext';
 import { nip57 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
+import { isBot } from '@/lib/botDetection';
+import { openInvoiceInWalletApp, getWalletAppInfo } from '@/lib/walletApps';
 
 /**
  * Hook for sending anonymous gratitude gifts (zaps) to random Nostr users
@@ -20,10 +22,22 @@ export function useGratitudeGift() {
   const { nostr } = useNostr();
 
   /**
-   * Select a random active Nostr pubkey with lightning address
+   * Helper function to publish zap request to relays (non-blocking)
+   */
+  const publishZapRequest = async (zapRequest: any) => {
+    try {
+      await nostr.event(zapRequest, { signal: AbortSignal.timeout(5000) });
+    } catch (error) {
+      // Payment succeeded but publishing failed - log but don't fail
+      console.warn('Payment succeeded but failed to publish zap request to relays:', error);
+    }
+  };
+
+  /**
+   * Select a random active Nostr pubkey with lightning address and return profile event
    * Queries for random active users from recent events and verifies they have lightning addresses
    */
-  const selectRandomRecipient = async (): Promise<string | null> => {
+  const selectRandomRecipient = async (): Promise<{ pubkey: string; profileEvent: any; profileData: any } | null> => {
     // Select random recipient from active users with lightning addresses
     try {
       // Query for recent kind 1 events and select a random author
@@ -62,19 +76,21 @@ export function useGratitudeGift() {
         profileMap.set(event.pubkey, event);
       });
 
-      // Check each pubkey for lightning address
+      // Check each pubkey for lightning address and filter out bots/news accounts
+      const validRecipients: Array<{ pubkey: string; profileEvent: any; profileData: any }> = [];
+      
       for (const pubkey of pubkeys) {
         const profileEvent = profileMap.get(pubkey);
         if (!profileEvent) {
-          continue; // Skip if no profile found
+          continue;
         }
 
         try {
           const profileData = JSON.parse(profileEvent.content);
           const lightningAddress = profileData.lud16 || profileData.lud06;
           
-          if (lightningAddress) {
-            pubkeysWithLightning.push(pubkey);
+          if (lightningAddress && !isBot(profileData.nip05, lightningAddress)) {
+            validRecipients.push({ pubkey, profileEvent, profileData });
           }
         } catch {
           // Invalid profile JSON, skip
@@ -82,13 +98,13 @@ export function useGratitudeGift() {
         }
       }
 
-      if (pubkeysWithLightning.length === 0) {
+      if (validRecipients.length === 0) {
         return null;
       }
 
-      // Select random pubkey from those with lightning addresses
-      const randomIndex = Math.floor(Math.random() * pubkeysWithLightning.length);
-      return pubkeysWithLightning[randomIndex];
+      // Select random recipient from valid ones
+      const randomIndex = Math.floor(Math.random() * validRecipients.length);
+      return validRecipients[randomIndex];
     } catch (error) {
       console.error('Error selecting random recipient:', error);
       return null;
@@ -123,10 +139,10 @@ export function useGratitudeGift() {
     setIsSending(true);
 
     try {
-      // Select random recipient
-      const recipientPubkey = await selectRandomRecipient();
+      // Select random recipient (already includes profile validation)
+      const recipient = await selectRandomRecipient();
 
-      if (!recipientPubkey) {
+      if (!recipient) {
         toast({
           title: 'No recipient found',
           description: 'Could not find a recipient. Please try again later.',
@@ -136,48 +152,8 @@ export function useGratitudeGift() {
         return false;
       }
 
-      // Fetch recipient's profile to get lightning address
-      const profileSignal = AbortSignal.timeout(3000);
-      const profileEvents = await nostr.query(
-        [{ kinds: [0], authors: [recipientPubkey], limit: 1 }],
-        { signal: profileSignal }
-      );
-
-      if (profileEvents.length === 0) {
-        toast({
-          title: 'Recipient not found',
-          description: 'Could not find recipient profile. Please try again.',
-          variant: 'destructive',
-        });
-        setIsSending(false);
-        return false;
-      }
-
-      const profileEvent = profileEvents[0];
-      let profileData;
-      try {
-        profileData = JSON.parse(profileEvent.content);
-      } catch {
-        toast({
-          title: 'Invalid profile',
-          description: 'Recipient profile is invalid. Please try again.',
-          variant: 'destructive',
-        });
-        setIsSending(false);
-        return false;
-      }
-
-      // Check for lightning address
+      const { pubkey: recipientPubkey, profileEvent, profileData } = recipient;
       const lightningAddress = profileData.lud16 || profileData.lud06;
-      if (!lightningAddress) {
-        toast({
-          title: 'No lightning address',
-          description: 'Recipient does not have a lightning address configured.',
-          variant: 'destructive',
-        });
-        setIsSending(false);
-        return false;
-      }
 
       // Get zap endpoint
       const zapEndpoint = await nip57.getZapEndpoint(profileEvent);
@@ -193,7 +169,12 @@ export function useGratitudeGift() {
 
       // Create zap request with gratitude message
       const zapAmount = amount * 1000; // convert to millisats
-      const gratitudeMessage = message || "A small gift of gratitude from someone who appreciates you today. 💜";
+      const defaultMessage = "A small gift of gratitude from someone who appreciates you today. 💜";
+      const baseMessage = message || defaultMessage;
+      // Ensure website URL is included (append if not already present)
+      const gratitudeMessage = baseMessage.includes("gratefulday.space") 
+        ? baseMessage 
+        : `${baseMessage} https://gratefulday.space`;
       
       // Get relay URLs for publishing zap request
       const relayUrls = config.relayMetadata.relays
@@ -230,21 +211,18 @@ export function useGratitudeGift() {
       // Pay the invoice
       const currentNWCConnection = getActiveConnection();
 
+      // Helper to handle successful payment
+      const handlePaymentSuccess = async () => {
+        await publishZapRequest(signedZapRequest);
+        setIsSending(false);
+        return true;
+      };
+
       // Try NWC first
-      if (currentNWCConnection && currentNWCConnection.connectionString && currentNWCConnection.isConnected) {
+      if (currentNWCConnection?.connectionString && currentNWCConnection.isConnected) {
         try {
           await sendPayment(currentNWCConnection, invoice);
-          
-          // Publish zap request to relays so recipient sees it in notifications
-          try {
-            await nostr.event(signedZapRequest, { signal: AbortSignal.timeout(5000) });
-          } catch (publishError) {
-            // Payment succeeded but publishing failed - log but don't fail
-            console.warn('Payment succeeded but failed to publish zap request to relays:', publishError);
-          }
-          
-          setIsSending(false);
-          return true;
+          return await handlePaymentSuccess();
         } catch (nwcError) {
           console.error('NWC payment failed, falling back:', nwcError);
         }
@@ -253,26 +231,11 @@ export function useGratitudeGift() {
       // Try WebLN
       if (webln) {
         try {
-          let webLnProvider = webln;
-          if (webln.enable && typeof webln.enable === 'function') {
-            const enabledProvider = await webln.enable();
-            const provider = enabledProvider as typeof webln | undefined;
-            if (provider) {
-              webLnProvider = provider;
-            }
-          }
+          const webLnProvider = webln.enable && typeof webln.enable === 'function'
+            ? await webln.enable() || webln
+            : webln;
           await webLnProvider.sendPayment(invoice);
-          
-          // Publish zap request to relays so recipient sees it in notifications
-          try {
-            await nostr.event(signedZapRequest, { signal: AbortSignal.timeout(5000) });
-          } catch (publishError) {
-            // Payment succeeded but publishing failed - log but don't fail
-            console.warn('Payment succeeded but failed to publish zap request to relays:', publishError);
-          }
-          
-          setIsSending(false);
-          return true;
+          return await handlePaymentSuccess();
         } catch (weblnError) {
           console.error('WebLN payment failed:', weblnError);
           toast({
@@ -285,10 +248,24 @@ export function useGratitudeGift() {
         }
       }
 
+      // Try default wallet app
+      if (config.defaultWalletApp !== 'none') {
+        const walletInfo = getWalletAppInfo(config.defaultWalletApp);
+        if (walletInfo && openInvoiceInWalletApp(invoice, config.defaultWalletApp)) {
+          await publishZapRequest(signedZapRequest);
+          toast({
+            title: 'Opening in wallet app',
+            description: `Opening invoice in ${walletInfo.name}. Complete the payment there.`,
+          });
+          setIsSending(false);
+          return true;
+        }
+      }
+
       // No payment method available
       toast({
         title: 'No payment method',
-        description: 'Please connect a Lightning wallet to send gratitude gifts.',
+        description: 'Please connect a Lightning wallet or set a default wallet app in settings to send gratitude gifts.',
         variant: 'destructive',
       });
       setIsSending(false);

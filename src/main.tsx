@@ -10,8 +10,8 @@ import './index.css';
 // FIXME: a custom font should be used. Eg:
 // import '@fontsource-variable/<font-name>';
 
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
+// Register Service Worker for PWA (only in production)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
@@ -26,6 +26,16 @@ if ('serviceWorker' in navigator) {
       .catch((error) => {
         console.error('Service Worker registration failed:', error);
       });
+  });
+} else if ('serviceWorker' in navigator && import.meta.env.DEV) {
+  // Unregister any existing service workers in development
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        registration.unregister();
+        console.log('Service Worker unregistered for development');
+      });
+    });
   });
 }
 

@@ -28,8 +28,12 @@ import { useNWC } from '@/hooks/useNWCContext';
 import { useWallet } from '@/hooks/useWallet';
 import { useToast } from '@/hooks/useToast';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAppContext } from '@/hooks/useAppContext';
 import type { NWCConnection, NWCInfo } from '@/hooks/useNWC';
 import type { WebLNProvider } from "@webbtc/webln-types";
+import { WALLET_APPS, getWalletAppInfo } from '@/lib/walletApps';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { WalletApp } from '@/contexts/AppContext';
 
 interface WalletModalProps {
   children?: React.ReactNode;
@@ -77,6 +81,8 @@ const WalletContent = forwardRef<HTMLDivElement, {
   handleSetActive: (cs: string) => void;
   handleRemoveConnection: (cs: string) => void;
   setAddDialogOpen: (open: boolean) => void;
+  defaultWalletApp: WalletApp;
+  onWalletAppChange: (app: WalletApp) => void;
 }>(({
   webln,
   hasNWC,
@@ -85,7 +91,9 @@ const WalletContent = forwardRef<HTMLDivElement, {
   activeConnection,
   handleSetActive,
   handleRemoveConnection,
-  setAddDialogOpen
+  setAddDialogOpen,
+  defaultWalletApp,
+  onWalletAppChange
 }, ref) => (
   <div className="space-y-6 px-4 pb-4" ref={ref}>
     {/* Current Status */}
@@ -189,13 +197,36 @@ const WalletContent = forwardRef<HTMLDivElement, {
         </div>
       )}
     </div>
+    {/* Default Wallet App Selection */}
+    <Separator />
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-medium mb-1">Default Wallet App</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          When WebLN is not available, invoices will open in this app
+        </p>
+        <Select value={defaultWalletApp} onValueChange={(value) => onWalletAppChange(value as WalletApp)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a wallet app" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None (show error)</SelectItem>
+            {WALLET_APPS.map((wallet) => (
+              <SelectItem key={wallet.id} value={wallet.id}>
+                {wallet.name} - {wallet.description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
     {/* Help */}
     {!webln && connections.length === 0 && (
       <>
         <Separator />
         <div className="text-center py-4 space-y-2">
           <p className="text-sm text-muted-foreground">
-            Install a WebLN extension or connect a NWC wallet for zaps.
+            Install a WebLN extension, connect a NWC wallet, or select a default wallet app for zaps.
           </p>
         </div>
       </>
@@ -222,9 +253,24 @@ export function WalletModal({ children, className }: WalletModalProps) {
   } = useNWC();
 
   const { webln } = useWallet();
+  const { config, updateConfig } = useAppContext();
 
   const hasNWC = connections.length > 0 && connections.some(c => c.isConnected);
   const { toast } = useToast();
+
+  const handleWalletAppChange = (walletApp: WalletApp) => {
+    updateConfig((current) => ({
+      ...current,
+      defaultWalletApp: walletApp,
+    }));
+    const walletInfo = getWalletAppInfo(walletApp);
+    toast({
+      title: 'Default wallet updated',
+      description: walletApp === 'none' 
+        ? 'No default wallet app selected'
+        : `Invoices will open in ${walletInfo?.name}`,
+    });
+  };
 
   const handleAddConnection = async () => {
     if (!connectionUri.trim()) {
@@ -270,6 +316,8 @@ export function WalletModal({ children, className }: WalletModalProps) {
     handleSetActive,
     handleRemoveConnection,
     setAddDialogOpen,
+    defaultWalletApp: config.defaultWalletApp,
+    onWalletAppChange: handleWalletAppChange,
   };
 
   const addWalletDialog = (
