@@ -13,7 +13,7 @@ interface TodayHeroProps {
 }
 
 export function TodayHero({ day, onOpenDetail, totalDays }: TodayHeroProps) {
-  const [_isHovered, setIsHovered] = useState(false);
+  const [, setIsHovered] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
 

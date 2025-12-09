@@ -63,7 +63,6 @@ export function useGratitudeGift() {
       // Keep only last 5
       const toStore = filtered.slice(0, 5);
       localStorage.setItem('gratitudeGift_recentRecipients', JSON.stringify(toStore));
-      console.log(`[GratitudeGift] Saved ${pubkey.substring(0, 16)}... to recent recipients list (${toStore.length} total)`);
     } catch (error) {
       console.warn('Failed to save recent recipient:', error);
     }
@@ -80,9 +79,6 @@ export function useGratitudeGift() {
     try {
       // Get recent recipients to exclude (last 5 to ensure variety)
       const recentRecipients = excludePubkey ? [excludePubkey] : getRecentRecipients();
-      if (recentRecipients.length > 0) {
-        console.log(`[GratitudeGift] Excluding ${recentRecipients.length} recent recipient(s) from selection`);
-      }
       
       // Query for recent kind 1 events and select a random author
       const signal = AbortSignal.timeout(5000);
@@ -157,20 +153,12 @@ export function useGratitudeGift() {
       console.log(`[GratitudeGift] ${candidatesWithLightning.length} candidates with lightning addresses (after bot filtering)`);
 
       if (candidatesWithLightning.length === 0) {
-        console.log('[GratitudeGift] No candidates with lightning addresses found');
         return null;
       }
 
-      // Use all candidates - we don't filter by zap activity anymore
-      // Zap activity detection is unreliable and was limiting the pool too much
-      const candidatePubkeys = candidatesWithLightning.map(c => c.pubkey);
-      
-      // Try to detect zap activity for logging/info only (non-blocking, don't wait for it)
-      // This runs in the background and doesn't affect selection
+      // Background zap activity check (non-blocking, for future use)
+      // Note: We don't filter by zap activity anymore as it was limiting the pool too much
       const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
-      const candidateSet = new Set(candidatePubkeys);
-      
-      // Fire and forget - just for logging, doesn't block selection
       nostr.query(
         [{
           kinds: [9734], // Zap request
@@ -178,22 +166,16 @@ export function useGratitudeGift() {
           limit: 5000
         }],
         { signal: AbortSignal.timeout(5000) }
-      ).then(allZapRequests => {
-        const candidateZapRequests = allZapRequests.filter(z => candidateSet.has(z.pubkey));
-        const zapSenders = new Set(candidateZapRequests.map(z => z.pubkey));
-        console.log(`[GratitudeGift] Background check: Found ${zapSenders.size} candidates with zap activity (info only)`);
-      }).catch(() => {
-        // Ignore errors - this is just for info
+      ).catch(() => {
+        // Ignore errors - this is just for background info
       });
 
       // Use all candidates - no zap filtering
       const validRecipients = candidatesWithLightning;
-      console.log(`[GratitudeGift] Using all ${validRecipients.length} candidates (no zap filtering)`);
 
       // If we excluded recent recipients and now have no valid recipients, 
       // allow them again as a fallback (better than no recipient)
       if (validRecipients.length === 0 && recentRecipients.length > 0) {
-        console.log(`[GratitudeGift] No other recipients found after excluding recent recipients, allowing them as fallback`);
         // Re-check candidates to see if any recent recipients are available
         const fallbackRecipient = candidatesWithLightning.find(c => recentRecipients.includes(c.pubkey));
         if (fallbackRecipient) {
@@ -202,20 +184,12 @@ export function useGratitudeGift() {
       }
 
       if (validRecipients.length === 0) {
-        console.log('[GratitudeGift] No valid recipients found after all filtering');
         return null;
       }
 
-      // Select random recipient from valid ones (all candidates)
+      // Select random recipient from valid ones
       const randomIndex = Math.floor(Math.random() * validRecipients.length);
-      const selected = validRecipients[randomIndex];
-      console.log(`[GratitudeGift] Selected recipient ${randomIndex + 1} of ${validRecipients.length} candidates`);
-      console.log(`[GratitudeGift] Selected pubkey: ${selected.pubkey.substring(0, 16)}...`);
-      if (recentRecipients.length > 0) {
-        console.log(`[GratitudeGift] Recent recipients were: ${recentRecipients.map(r => r.substring(0, 8)).join(', ')}...`);
-        console.log(`[GratitudeGift] Selected matches recent recipient: ${recentRecipients.includes(selected.pubkey)}`);
-      }
-      return selected;
+      return validRecipients[randomIndex];
     } catch (error) {
       console.error('Error selecting random recipient:', error);
       return null;
@@ -246,25 +220,12 @@ export function useGratitudeGift() {
         // Endpoint doesn't support status checking, try next method
       }
 
-      // Method 2: Try checking via invoice lookup (some services support this)
-      try {
-        // Extract payment hash from invoice (basic BOLT11 parsing)
-        // This is a simplified check - full BOLT11 decoding would be more robust
-        const paymentHashMatch = invoice.match(/lnbc\d+[munp]?1[^1]*1([a-z0-9]{64})/i);
-        if (paymentHashMatch) {
-          const _paymentHash = paymentHashMatch[1];
-          // Some services allow checking payment hash status
-          // This is service-dependent and may not work for all providers
-        }
-      } catch {
-        // Payment hash extraction failed, continue
-      }
-
-      // Method 3: For now, we'll rely on the fact that if the invoice callback
-      // was triggered (which happens when payment is made), the zap request
-      // would have been processed. Since we can't reliably check invoice status
-      // without service-specific APIs, we return false and let the polling continue
-      // The user can manually confirm payment, or we can add a manual "I paid" button
+      // Method 2: Extract payment hash for potential future use
+      // Note: Most LNURL endpoints don't support payment hash lookup
+      // This is kept for potential future service-specific implementations
+      
+      // Since we can't reliably check invoice status without service-specific APIs,
+      // we return false and let polling continue. Users can manually confirm payment.
       return false;
     } catch (error) {
       console.debug('Invoice status check error:', error);

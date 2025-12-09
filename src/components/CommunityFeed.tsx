@@ -90,12 +90,14 @@ function GratitudePost({ event }: { event: NostrEvent }) {
   );
 }
 
+// Blocked event IDs (client-side filtering for specific posts)
+const BLOCKED_EVENT_IDS: readonly string[] = [
+  '7dc5075c9ed84b5411b5ee2188a510e8359f7d0a22b909157ce2773265a61a70',
+];
+
 export function CommunityFeed() {
   const [limit] = useState(20);
   const { data: posts, isLoading, refetch, isRefetching } = useCommunityGratitude(limit);
-  const BLOCKED_EVENT_IDS = [
-    '7dc5075c9ed84b5411b5ee2188a510e8359f7d0a22b909157ce2773265a61a70',
-  ];
   const visiblePosts = posts?.filter((p) => !BLOCKED_EVENT_IDS.includes(p.id));
 
   return (
