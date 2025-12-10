@@ -10,8 +10,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGratitudeEntries } from '@/hooks/useGratitudeEntries';
 import {
   getAllDaysInYear,
-  getDayOfYear,
-  getTotalDaysInYear,
 } from '@/lib/gratitudeUtils';
 import { Logo } from '@/components/Logo';
 import { useIsMobile } from '@/hooks/useIsMobile';
