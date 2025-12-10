@@ -9,6 +9,7 @@ import { useCommunityGratitude } from '@/hooks/useGratitudeEntries';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import type { NostrEvent, NostrMetadata } from '@nostrify/nostrify';
+import { NoteContent } from '@/components/NoteContent';
 
 function GratitudePost({ event }: { event: NostrEvent }) {
   const author = useAuthor(event.pubkey);
@@ -77,9 +78,9 @@ function GratitudePost({ event }: { event: NostrEvent }) {
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap break-all sm:break-words sm:line-clamp-4">
-          {event.content}
-        </p>
+        <div className="text-sm text-foreground/90 break-all sm:break-words sm:line-clamp-4">
+          <NoteContent event={event} />
+        </div>
         {showId && (
           <div className="p-2 rounded-md bg-muted text-xs break-all border border-muted-foreground/10">
             {event.id}
