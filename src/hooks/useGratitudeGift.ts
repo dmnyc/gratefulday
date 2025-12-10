@@ -5,7 +5,9 @@ import { useNWC } from '@/hooks/useNWCContext';
 import { useToast } from '@/hooks/useToast';
 import { useAppContext } from '@/hooks/useAppContext';
 import { nip57 } from 'nostr-tools';
+import type { Event } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { isBot } from '@/lib/botDetection';
 import { openInvoiceInWalletApp, getWalletAppInfo } from '@/lib/walletApps';
 
@@ -15,7 +17,7 @@ import { openInvoiceInWalletApp, getWalletAppInfo } from '@/lib/walletApps';
 export function useGratitudeGift() {
   const [isSending, setIsSending] = useState(false);
   const { user } = useCurrentUser();
-  const { webln, activeNWC } = useWallet();
+  const { webln } = useWallet();
   const { sendPayment, getActiveConnection } = useNWC();
   const { toast } = useToast();
   const { config } = useAppContext();
@@ -24,9 +26,9 @@ export function useGratitudeGift() {
   /**
    * Helper function to publish zap request to relays (non-blocking)
    */
-  const publishZapRequest = async (zapRequest: any) => {
+  const publishZapRequest = async (zapRequest: unknown) => {
     try {
-      await nostr.event(zapRequest, { signal: AbortSignal.timeout(5000) });
+      await nostr.event(zapRequest as NostrEvent, { signal: AbortSignal.timeout(5000) });
     } catch (error) {
       // Payment succeeded but publishing failed - log but don't fail
       console.warn('Payment succeeded but failed to publish zap request to relays:', error);
@@ -34,14 +36,52 @@ export function useGratitudeGift() {
   };
 
   /**
+   * Get recent recipients (last 5) from localStorage to avoid repeating
+   */
+  const getRecentRecipients = (): string[] => {
+    try {
+      const stored = localStorage.getItem('gratitudeGift_recentRecipients');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  };
+
+  /**
+   * Save a recipient to the recent recipients list (keeps last 5)
+   */
+  const saveRecentRecipient = (pubkey: string): void => {
+    try {
+      const recent = getRecentRecipients();
+      // Remove if already exists
+      const filtered = recent.filter(p => p !== pubkey);
+      // Add to front
+      filtered.unshift(pubkey);
+      // Keep only last 5
+      const toStore = filtered.slice(0, 5);
+      localStorage.setItem('gratitudeGift_recentRecipients', JSON.stringify(toStore));
+    } catch (error) {
+      console.warn('Failed to save recent recipient:', error);
+    }
+  };
+
+  /**
    * Select a random active Nostr pubkey with lightning address and return profile event
    * Queries for random active users from recent events and verifies they have lightning addresses
+   * Also filters to only include users who have sent a zap in the last 10 days
+   * Excludes the last recipient to avoid zapping the same person twice in a row
    */
-  const selectRandomRecipient = async (): Promise<{ pubkey: string; profileEvent: any; profileData: any } | null> => {
+  const selectRandomRecipient = async (excludePubkey?: string | null): Promise<{ pubkey: string; profileEvent: unknown; profileData: unknown } | null> => {
     // Select random recipient from active users with lightning addresses
     try {
+      // Get recent recipients to exclude (last 5 to ensure variety)
+      const recentRecipients = excludePubkey ? [excludePubkey] : getRecentRecipients();
+      
       // Query for recent kind 1 events and select a random author
-      const signal = AbortSignal.timeout(5000); // Increased timeout for profile checks
+      const signal = AbortSignal.timeout(5000);
       const recentEvents = await nostr.query(
         [{ kinds: [1], limit: 50 }],
         { signal }
@@ -54,15 +94,24 @@ export function useGratitudeGift() {
       // Get unique pubkeys from recent events
       const pubkeys = Array.from(
         new Set(recentEvents.map((e) => e.pubkey))
-      ).filter((pk) => pk !== user?.pubkey); // Exclude current user
+      ).filter((pk) => {
+        // Exclude current user
+        if (pk === user?.pubkey) return false;
+        // Exclude recent recipients to avoid zapping same people repeatedly
+        if (recentRecipients.includes(pk)) {
+          console.log(`[GratitudeGift] Excluding recent recipient: ${pk.substring(0, 8)}...`);
+          return false;
+        }
+        return true;
+      });
+
+      console.log(`[GratitudeGift] Found ${pubkeys.length} unique pubkeys from recent events${recentRecipients.length > 0 ? ` (excluding ${recentRecipients.length} recent recipient(s))` : ''}`);
 
       if (pubkeys.length === 0) {
+        console.log('[GratitudeGift] No pubkeys found after filtering current user');
         return null;
       }
 
-      // Check each pubkey for lightning address
-      const pubkeysWithLightning: string[] = [];
-      
       // Batch fetch profiles (query all at once for efficiency)
       const profileSignal = AbortSignal.timeout(5000);
       const profileEvents = await nostr.query(
@@ -70,14 +119,16 @@ export function useGratitudeGift() {
         { signal: profileSignal }
       );
 
+      console.log(`[GratitudeGift] Fetched ${profileEvents.length} profiles`);
+
       // Create a map of pubkey -> profile event
       const profileMap = new Map<string, typeof profileEvents[0]>();
       profileEvents.forEach((event) => {
         profileMap.set(event.pubkey, event);
       });
 
-      // Check each pubkey for lightning address and filter out bots/news accounts
-      const validRecipients: Array<{ pubkey: string; profileEvent: any; profileData: any }> = [];
+      // First pass: filter by lightning address and bot status
+      const candidatesWithLightning: Array<{ pubkey: string; profileEvent: unknown; profileData: unknown }> = [];
       
       for (const pubkey of pubkeys) {
         const profileEvent = profileMap.get(pubkey);
@@ -89,12 +140,46 @@ export function useGratitudeGift() {
           const profileData = JSON.parse(profileEvent.content);
           const lightningAddress = profileData.lud16 || profileData.lud06;
           
+          // Must have lightning address and not be a bot
           if (lightningAddress && !isBot(profileData.nip05, lightningAddress)) {
-            validRecipients.push({ pubkey, profileEvent, profileData });
+            candidatesWithLightning.push({ pubkey, profileEvent, profileData });
           }
         } catch {
           // Invalid profile JSON, skip
           continue;
+        }
+      }
+
+      console.log(`[GratitudeGift] ${candidatesWithLightning.length} candidates with lightning addresses (after bot filtering)`);
+
+      if (candidatesWithLightning.length === 0) {
+        return null;
+      }
+
+      // Background zap activity check (non-blocking, for future use)
+      // Note: We don't filter by zap activity anymore as it was limiting the pool too much
+      const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
+      nostr.query(
+        [{
+          kinds: [9734], // Zap request
+          since: thirtyDaysAgo,
+          limit: 5000
+        }],
+        { signal: AbortSignal.timeout(5000) }
+      ).catch(() => {
+        // Ignore errors - this is just for background info
+      });
+
+      // Use all candidates - no zap filtering
+      const validRecipients = candidatesWithLightning;
+
+      // If we excluded recent recipients and now have no valid recipients, 
+      // allow them again as a fallback (better than no recipient)
+      if (validRecipients.length === 0 && recentRecipients.length > 0) {
+        // Re-check candidates to see if any recent recipients are available
+        const fallbackRecipient = candidatesWithLightning.find(c => recentRecipients.includes(c.pubkey));
+        if (fallbackRecipient) {
+          return fallbackRecipient;
         }
       }
 
@@ -135,25 +220,12 @@ export function useGratitudeGift() {
         // Endpoint doesn't support status checking, try next method
       }
 
-      // Method 2: Try checking via invoice lookup (some services support this)
-      try {
-        // Extract payment hash from invoice (basic BOLT11 parsing)
-        // This is a simplified check - full BOLT11 decoding would be more robust
-        const paymentHashMatch = invoice.match(/lnbc\d+[munp]?1[^1]*1([a-z0-9]{64})/i);
-        if (paymentHashMatch) {
-          const paymentHash = paymentHashMatch[1];
-          // Some services allow checking payment hash status
-          // This is service-dependent and may not work for all providers
-        }
-      } catch {
-        // Payment hash extraction failed, continue
-      }
-
-      // Method 3: For now, we'll rely on the fact that if the invoice callback
-      // was triggered (which happens when payment is made), the zap request
-      // would have been processed. Since we can't reliably check invoice status
-      // without service-specific APIs, we return false and let the polling continue
-      // The user can manually confirm payment, or we can add a manual "I paid" button
+      // Method 2: Extract payment hash for potential future use
+      // Note: Most LNURL endpoints don't support payment hash lookup
+      // This is kept for potential future service-specific implementations
+      
+      // Since we can't reliably check invoice status without service-specific APIs,
+      // we return false and let polling continue. Users can manually confirm payment.
       return false;
     } catch (error) {
       console.debug('Invoice status check error:', error);
@@ -171,7 +243,7 @@ export function useGratitudeGift() {
   const sendGratitudeGift = async (
     amount: number, 
     message?: string
-  ): Promise<{ success: boolean; invoice?: string; zapEndpoint?: string; signedZapRequest?: any }> => {
+  ): Promise<{ success: boolean; invoice?: string; zapEndpoint?: string; signedZapRequest?: unknown }> => {
     if (!user) {
       toast({
         title: 'Login required',
@@ -206,11 +278,13 @@ export function useGratitudeGift() {
         return { success: false };
       }
 
-      const { pubkey: recipientPubkey, profileEvent, profileData } = recipient;
-      const lightningAddress = profileData.lud16 || profileData.lud06;
+      const { pubkey: recipientPubkey, profileEvent } = recipient;
+      
+      // Save this recipient to recent recipients list to avoid zapping them again soon
+      saveRecentRecipient(recipientPubkey);
 
       // Get zap endpoint
-      const zapEndpoint = await nip57.getZapEndpoint(profileEvent);
+      const zapEndpoint = await nip57.getZapEndpoint(profileEvent as Event);
       if (!zapEndpoint) {
         toast({
           title: 'Zap endpoint not found',
@@ -346,7 +420,7 @@ export function useGratitudeGift() {
   const verifyAndPublishPayment = async (
     invoice: string,
     zapEndpoint: string,
-    signedZapRequest: any,
+    signedZapRequest: unknown,
     forcePublish: boolean = false
   ): Promise<boolean> => {
     try {
